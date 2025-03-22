@@ -18,10 +18,13 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from account.views import account_view, login_ajax, logout_ajax
+from chat.views import room_list_view, room_detail_view
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('account/', account_view, name='account_home'),
     path('account/login_ajax/', login_ajax, name='login_ajax'),
     path('account/logout_ajax/', logout_ajax, name='logout_ajax'),
+    path('chat/', room_list_view, name='room_list'),
+    path('chat/<slug:slug>/', room_detail_view, name='room_detail'),
 ]

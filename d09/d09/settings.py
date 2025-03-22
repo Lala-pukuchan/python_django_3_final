@@ -31,6 +31,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    "daphne",
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -124,6 +125,10 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Login URL for @login_required decorator
+# if user is not logged in, redirect to this URL
+LOGIN_URL = '/account/'
 
 ASGI_APPLICATION = 'd09.asgi.application'
 # Django Channels使用時に、ASGI_APPLICATION を指定する

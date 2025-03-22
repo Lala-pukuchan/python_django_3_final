@@ -1,0 +1,26 @@
+[
+    {
+        "model": "chat.room",
+        "pk": 1,
+        "fields": {
+            "name": "General Chat",
+            "slug": "general"
+        }
+    },
+    {
+        "model": "chat.room",
+        "pk": 2,
+        "fields": {
+            "name": "Tech Discussion",
+            "slug": "tech"
+        }
+    },
+    {
+        "model": "chat.room",
+        "pk": 3,
+        "fields": {
+            "name": "Random Talk",
+            "slug": "random"
+        }
+    }
+] 

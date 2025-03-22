@@ -15,6 +15,8 @@ cd d09
 # db migration
 python manage.py makemigrations
 python manage.py migrate
+# Load initial chat rooms data
+python manage.py loaddata chat/fixtures/initial_chat_rooms.json
 # translation
 #python manage.py makemessages -l en
 #python manage.py makemessages -l ja

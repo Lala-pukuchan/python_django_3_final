@@ -1,0 +1,56 @@
+<!-- chat/templates/chat/room_detail.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Chat: {{ room.name }}</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+<h2>{{ room.name }}</h2>
+<div id="chat-log" style="border:1px solid #333; width:300px; height:200px; overflow-y:scroll;">
+    <!-- メッセージ表示領域 -->
+</div>
+<input id="chat-message-input" type="text" size="30" />
+<button id="chat-message-send">Send</button>
+
+<script>
+(function(){
+    // Django Channels での WebSocketパス
+    // asgi.py で /ws/chat/<slug>/ を受け付けるようにする (例)
+    const roomSlug = "{{ room.slug }}";
+    const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
+    const chatSocket = new WebSocket(
+        wsScheme + '://' + window.location.host + '/ws/chat/' + roomSlug + '/'
+    );
+
+    chatSocket.onopen = function(e) {
+        console.log("WebSocket connection opened.");
+    };
+
+    chatSocket.onmessage = function(e) {
+        const data = JSON.parse(e.data);
+        if(data.message){
+            let chatLog = $("#chat-log");
+            chatLog.append("<div>" + data.message + "</div>");
+            // スクロールを最下部に
+            chatLog.scrollTop(chatLog[0].scrollHeight);
+        }
+    };
+
+    chatSocket.onclose = function(e) {
+        console.log("WebSocket closed.");
+    };
+
+    $("#chat-message-send").on("click", function(){
+        let messageInputDom = $("#chat-message-input");
+        let message = messageInputDom.val();
+        chatSocket.send(JSON.stringify({
+            'message': message
+        }));
+        messageInputDom.val('');
+    });
+})();
+</script>
+</body>
+</html>
