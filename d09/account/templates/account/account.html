@@ -1,0 +1,88 @@
+<!-- account/templates/account/account.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Account</title>
+    <!-- jQuery を読み込み -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+{% if is_authenticated %}
+    <div id="logged_in_section">
+        <p>Logged as {{ username }}</p>
+        <button id="logout_btn">Logout</button>
+    </div>
+{% else %}
+    <div id="login_form_section">
+        <form id="login_form">
+            {{ form.as_p }}
+            <button type="button" id="login_btn">Login (AJAX)</button>
+        </form>
+        <div id="error_box" style="color:red;"></div>
+    </div>
+{% endif %}
+
+<script>
+$(function() {
+    // Server check cookie CSRF token and header CSRF token to prevent CSRF attack
+    // CSRF トークン取得 (Django CSRF 対策)
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    const csrftoken = getCookie('csrftoken');
+
+    // AJAX Setup
+    $.ajaxSetup({
+        headers: { 'X-CSRFToken': csrftoken }
+    });
+
+    // Login
+    $("#login_btn").on("click", function(){
+        let formData = $("#login_form").serialize(); // username, password
+        $.post("/account/login_ajax/", formData)
+         .done(function(response){
+             if(response.success === true){
+                 // ログイン成功 => ページをリロードせずに動的に表示切り替え
+                 location.reload(); // ここでは手軽にリロードしても可
+             } else {
+                 // エラー表示
+                 let errors = response.errors;
+                 let errorObj = JSON.parse(errors);
+                 let errorMessage = errorObj.__all__[0].message;
+                 $("#error_box").html(errorMessage);
+             }
+         })
+         .fail(function(err){
+             console.log(err);
+         });
+    });
+
+    // Logout
+    $("#logout_btn").on("click", function(){
+        $.post("/account/logout_ajax/", {})
+         .done(function(response){
+             if(response.success === true){
+                 // ログアウト成功 => リロード or 動的切り替え
+                 location.reload();
+             }
+         })
+         .fail(function(err){
+             console.log(err);
+         });
+    });
+});
+</script>
+</body>
+</html>
