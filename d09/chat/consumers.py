@@ -2,8 +2,7 @@
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from django.contrib.auth.models import AnonymousUser
-from django.shortcuts import get_object_or_404
-from .models import Room
+from .models import Room, Message
 from asgiref.sync import sync_to_async
 
 class ChatConsumer(AsyncWebsocketConsumer):
@@ -31,6 +30,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
         self.username = user.username if user.is_authenticated else "Anonymous"
 
         await self.accept()
+
+        # 最新の3件のメッセージを取得して送信
+        last_messages = await self.get_last_3_messages(self.room)
+        for msg in last_messages:
+            await self.send(text_data=json.dumps({
+                'message': f"{msg.user}: {msg.content}"
+            }))
 
         # 入室メッセージを全員に通知
         join_text = f"{self.username} has joined the chat"
@@ -69,6 +75,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'message': f"{self.username}: {message}",
             }
         )
+        # DBにメッセージを保存
+        await self.save_message(self.room, self.username, message)
 
     async def chat_message(self, event):
         message = event['message']
@@ -82,3 +90,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
     def get_room(slug):
         # this is to check if the room exists when a new connection is established
         return Room.objects.get(slug=slug)
+
+    @staticmethod
+    @sync_to_async
+    def get_last_3_messages(room):
+        return list(Message.objects.filter(room=room).order_by('-timestamp')[:3][::-1])
+
+    @staticmethod
+    @sync_to_async
+    def save_message(room, user, content):
+        Message.objects.create(room=room, user=user, content=content)
