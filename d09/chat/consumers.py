@@ -6,6 +6,10 @@ from .models import Room, Message
 from asgiref.sync import sync_to_async
 
 class ChatConsumer(AsyncWebsocketConsumer):
+    
+    # グローバルに保持(注意: 実際には複数プロセスで同期されない)
+    connected_users = set()
+
     # this function will be called when a new websocket connection is established
     async def connect(self):
         self.slug = self.scope['url_route']['kwargs']['slug']
@@ -38,6 +42,20 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'message': f"{msg.user}: {msg.content}"
             }))
 
+        # ユーザーリストに追加
+        self.connected_users.add(self.username)
+
+        # 接続後にクライアントに現在のユーザー一覧を送る
+        await self.send_userlist()
+
+        # 他のクライアントにもユーザー一覧更新を通知
+        await self.channel_layer.group_send(
+            self.room_group_name,
+            {
+                'type': 'user_list_update'
+            }
+        )
+
         # 入室メッセージを全員に通知
         join_text = f"{self.username} has joined the chat"
         await self.channel_layer.group_send(
@@ -49,6 +67,18 @@ class ChatConsumer(AsyncWebsocketConsumer):
         )
 
     async def disconnect(self, close_code):
+        # connected_users から削除
+        if self.username in self.connected_users:
+            self.connected_users.remove(self.username)
+
+        # ユーザー一覧更新を通知
+        await self.channel_layer.group_send(
+            self.room_group_name,
+            {
+                'type': 'user_list_update'
+            }
+        )
+
         # 退出メッセージを送信
         leave_text = f"{self.username} has left the chat"
         await self.channel_layer.group_send(
@@ -83,6 +113,15 @@ class ChatConsumer(AsyncWebsocketConsumer):
         # WebSocket に送信
         await self.send(text_data=json.dumps({
             'message': message
+        }))
+
+    async def user_list_update(self, event):
+        # 全クライアントに対してユーザー一覧を送る
+        await self.send_userlist()
+
+    async def send_userlist(self):
+        await self.send(text_data=json.dumps({
+            'userlist': list(self.connected_users)
         }))
 
     @staticmethod

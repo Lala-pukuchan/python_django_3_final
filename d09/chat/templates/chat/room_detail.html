@@ -5,14 +5,46 @@
     <meta charset="utf-8">
     <title>Chat: {{ room.name }}</title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        .chat-container {
+            display: flex;
+            gap: 20px;
+        }
+        #chat-log {
+            border: 1px solid #333;
+            width: 300px;
+            height: 200px;
+            overflow-y: scroll;
+        }
+        #user-list-container {
+            border: 1px solid #333;
+            padding: 10px;
+            min-width: 150px;
+        }
+        #user-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+    </style>
 </head>
 <body>
 <h2>{{ room.name }}</h2>
-<div id="chat-log" style="border:1px solid #333; width:300px; height:200px; overflow-y:scroll;">
-    <!-- メッセージ表示領域 -->
+<div class="chat-container">
+    <div class="chat-main">
+        <div id="chat-log">
+            <!-- メッセージ表示領域 -->
+        </div>
+        <input id="chat-message-input" type="text" size="30" />
+        <button id="chat-message-send">Send</button>
+    </div>
+    <div id="user-list-container">
+        <h3>Connected Users</h3>
+        <ul id="user-list">
+            <!-- ユーザー一覧表示領域 -->
+        </ul>
+    </div>
 </div>
-<input id="chat-message-input" type="text" size="30" />
-<button id="chat-message-send">Send</button>
 
 <script>
 (function(){
@@ -36,6 +68,13 @@
             // スクロールを最下部に
             chatLog.scrollTop(chatLog[0].scrollHeight);
         }
+        if(data.userlist){
+            // ユーザー一覧表示
+            $("#user-list").empty();
+            data.userlist.forEach(function(u){
+                $("#user-list").append("<li>"+u+"</li>");
+            });
+        }
     };
 
     chatSocket.onclose = function(e) {
@@ -49,6 +88,13 @@
             'message': message
         }));
         messageInputDom.val('');
+    });
+
+    // Enter keyでも送信可能に
+    $("#chat-message-input").on("keypress", function(e) {
+        if (e.which === 13) { // Enter key
+            $("#chat-message-send").click();
+        }
     });
 })();
 </script>
