@@ -15,16 +15,50 @@
             width: 300px;
             height: 200px;
             overflow-y: scroll;
+            padding: 10px;
+            background: #e6f3ff;
+        }
+        #chat-log div {
+            margin: 5px 0;
+            padding: 5px;
+            background: white;
+            border-radius: 5px;
+            word-wrap: break-word;
+        }
+        #chat-log div.system-message {
+            color: #666;
+            font-style: italic;
+            background: #e8e8e8;
         }
         #user-list-container {
             border: 1px solid #333;
             padding: 10px;
             min-width: 150px;
+            background: #f0ffe0;
         }
         #user-list {
             list-style: none;
             padding: 0;
             margin: 0;
+        }
+        .chat-input-container {
+            margin-top: 10px;
+            display: flex;
+            gap: 5px;
+        }
+        #chat-message-input {
+            flex-grow: 1;
+            padding: 5px;
+        }
+        #chat-message-send {
+            padding: 5px 15px;
+            background-color: #ffe6e6;  /* 薄いピンク色の背景 */
+            border: 1px solid #ffcccc;  /* やや濃いめのピンクのボーダー */
+            border-radius: 4px;         /* 角を丸く */
+            cursor: pointer;            /* ホバー時のカーソル */
+        }
+        #chat-message-send:hover {
+            background-color: #ffcccc;  /* ホバー時は少し濃いピンクに */
         }
     </style>
 </head>
@@ -35,8 +69,10 @@
         <div id="chat-log">
             <!-- メッセージ表示領域 -->
         </div>
-        <input id="chat-message-input" type="text" size="30" />
-        <button id="chat-message-send">Send</button>
+        <div class="chat-input-container">
+            <input id="chat-message-input" type="text" placeholder="Type a message..." />
+            <button id="chat-message-send">Send</button>
+        </div>
     </div>
     <div id="user-list-container">
         <h3>Connected Users</h3>
@@ -64,7 +100,11 @@
         const data = JSON.parse(e.data);
         if(data.message){
             let chatLog = $("#chat-log");
-            chatLog.append("<div>" + data.message + "</div>");
+            // 入室/退室メッセージかどうかを判定
+            const isSystemMessage = data.message.includes("has joined the chat") || 
+                                  data.message.includes("has left the chat");
+            const messageClass = isSystemMessage ? 'system-message' : '';
+            chatLog.append(`<div class="${messageClass}">${data.message}</div>`);
             // スクロールを最下部に
             chatLog.scrollTop(chatLog[0].scrollHeight);
         }
@@ -83,11 +123,13 @@
 
     $("#chat-message-send").on("click", function(){
         let messageInputDom = $("#chat-message-input");
-        let message = messageInputDom.val();
-        chatSocket.send(JSON.stringify({
-            'message': message
-        }));
-        messageInputDom.val('');
+        let message = messageInputDom.val().trim();
+        if (message) {
+            chatSocket.send(JSON.stringify({
+                'message': message
+            }));
+            messageInputDom.val('');
+        }
     });
 
     // Enter keyでも送信可能に

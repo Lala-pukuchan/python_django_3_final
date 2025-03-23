@@ -17,6 +17,7 @@
 {% else %}
     <div id="login_form_section">
         <form id="login_form">
+            {% csrf_token %}
             {{ form.as_p }}
             <button type="button" id="login_btn">Login (AJAX)</button>
         </form>
@@ -26,9 +27,14 @@
 
 <script>
 $(function() {
-    // Server check cookie CSRF token and header CSRF token to prevent CSRF attack
-    // CSRF トークン取得 (Django CSRF 対策)
-    function getCookie(name) {
+    // CSRFトークン取得の改善
+    function getCSRFToken() {
+        // 1. まずフォームからCSRFトークンを取得
+        let token = $('[name=csrfmiddlewaretoken]').val();
+        if (token) return token;
+
+        // 2. クッキーからの取得（バックアップ）
+        let name = 'csrftoken';
         let cookieValue = null;
         if (document.cookie && document.cookie !== '') {
             const cookies = document.cookie.split(';');
@@ -42,23 +48,38 @@ $(function() {
         }
         return cookieValue;
     }
-    const csrftoken = getCookie('csrftoken');
 
-    // AJAX Setup
-    $.ajaxSetup({
-        headers: { 'X-CSRFToken': csrftoken }
-    });
+    // AJAX Setup with retry mechanism
+    function setupAjax() {
+        const token = getCSRFToken();
+        if (!token) {
+            console.error('CSRF token not found');
+            return false;
+        }
+        $.ajaxSetup({
+            headers: { 'X-CSRFToken': token },
+            beforeSend: function(xhr, settings) {
+                if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
+                    xhr.setRequestHeader("X-CSRFToken", token);
+                }
+            }
+        });
+        return true;
+    }
 
-    // Login
+    // Login with retry
     $("#login_btn").on("click", function(){
-        let formData = $("#login_form").serialize(); // username, password
+        if (!setupAjax()) {
+            $("#error_box").html("Security token not found. Please refresh the page.");
+            return;
+        }
+
+        let formData = $("#login_form").serialize();
         $.post("/account/login_ajax/", formData)
          .done(function(response){
              if(response.success === true){
-                 // ログイン成功 => ページをリロードせずに動的に表示切り替え
-                 location.reload(); // ここでは手軽にリロードしても可
+                 location.reload();
              } else {
-                 // エラー表示
                  let errors = response.errors;
                  let errorObj = JSON.parse(errors);
                  let errorMessage = errorObj.__all__[0].message;
@@ -66,21 +87,31 @@ $(function() {
              }
          })
          .fail(function(err){
-             console.log(err);
+             if (err.status === 403) {
+                 $("#error_box").html("Security check failed. Please refresh the page.");
+             } else {
+                 console.log(err);
+                 $("#error_box").html("An error occurred. Please try again.");
+             }
          });
     });
 
-    // Logout
+    // Logout with retry
     $("#logout_btn").on("click", function(){
+        if (!setupAjax()) {
+            alert("Security token not found. Please refresh the page.");
+            return;
+        }
+
         $.post("/account/logout_ajax/", {})
          .done(function(response){
              if(response.success === true){
-                 // ログアウト成功 => リロード or 動的切り替え
                  location.reload();
              }
          })
          .fail(function(err){
              console.log(err);
+             alert("Logout failed. Please refresh the page and try again.");
          });
     });
 });
